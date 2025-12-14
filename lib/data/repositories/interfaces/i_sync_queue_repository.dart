@@ -1,4 +1,3 @@
-import '../../../core/enums/app_enums.dart';
 import '../../models/sync_queue_model.dart';
 
 abstract class ISyncQueueRepository {

@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:async';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../../core/constants/app_constants.dart';
 import 'auth_service.dart';
@@ -10,6 +12,8 @@ class ApiService {
 
   final AuthService _authService = AuthService();
   static const String _baseUrl = AppConstants.apiBaseUrl;
+  static const Duration _timeout = AppConstants.apiTimeout;
+  static const int _maxRetries = AppConstants.maxRetryAttempts;
 
   /// Make authenticated GET request
   Future<http.Response> get(
@@ -41,11 +45,12 @@ class ApiService {
   Future<http.Response> delete(
     String endpoint, {
     Map<String, String>? headers,
+    String? body,
   }) async {
-    return await _makeRequest('DELETE', endpoint, headers: headers);
+    return await _makeRequest('DELETE', endpoint, headers: headers, body: body);
   }
 
-  /// Make authenticated request with automatic token refresh
+  /// Make authenticated request with automatic token refresh and retry logic
   Future<http.Response> _makeRequest(
     String method,
     String endpoint, {
@@ -53,27 +58,84 @@ class ApiService {
     String? body,
   }) async {
     final url = '$_baseUrl$endpoint';
-    final authHeaders = await _authService.getAuthHeaders();
-    final allHeaders = {...authHeaders, ...?headers};
 
-    http.Response response = await _executeRequest(
-      method,
-      url,
-      allHeaders,
-      body,
-    );
+    for (int attempt = 0; attempt < _maxRetries; attempt++) {
+      try {
+        final authHeaders = await _authService.getAuthHeaders();
+        final allHeaders = {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+          ...?headers,
+        };
 
-    // If token expired, try to refresh and retry once
-    if (response.statusCode == 401) {
-      final refreshed = await _authService.refreshToken();
-      if (refreshed) {
-        final newAuthHeaders = await _authService.getAuthHeaders();
-        final newAllHeaders = {...newAuthHeaders, ...?headers};
-        response = await _executeRequest(method, url, newAllHeaders, body);
+        http.Response response = await _executeRequest(
+          method,
+          url,
+          allHeaders,
+          body,
+        ).timeout(_timeout);
+
+        // If token expired, try to refresh and retry once
+        if (response.statusCode == 401 && attempt == 0) {
+          final refreshed = await _authService.refreshToken();
+          if (refreshed) {
+            continue; // Retry with new token
+          } else {
+            throw ApiException(
+              statusCode: 401,
+              message: 'Authentication failed',
+              details: {'reason': 'token_refresh_failed'},
+            );
+          }
+        }
+
+        // If successful or client error (4xx), return response
+        if (response.statusCode < 500) {
+          return response;
+        }
+
+        // Server error (5xx) - retry if not last attempt
+        if (attempt == _maxRetries - 1) {
+          return response;
+        }
+
+        // Wait before retry with exponential backoff
+        await Future.delayed(Duration(milliseconds: 1000 * (attempt + 1)));
+      } on TimeoutException {
+        if (attempt == _maxRetries - 1) {
+          throw ApiException(
+            statusCode: 408,
+            message: 'Request timeout',
+            details: {'timeout': _timeout.inSeconds},
+          );
+        }
+        await Future.delayed(Duration(milliseconds: 1000 * (attempt + 1)));
+      } on SocketException {
+        if (attempt == _maxRetries - 1) {
+          throw ApiException(
+            statusCode: 0,
+            message: 'No internet connection',
+            details: {'reason': 'network_error'},
+          );
+        }
+        await Future.delayed(Duration(milliseconds: 1000 * (attempt + 1)));
+      } catch (e) {
+        if (attempt == _maxRetries - 1) {
+          throw ApiException(
+            statusCode: 0,
+            message: 'Request failed: ${e.toString()}',
+            details: {'error': e.toString()},
+          );
+        }
+        await Future.delayed(Duration(milliseconds: 1000 * (attempt + 1)));
       }
     }
 
-    return response;
+    throw ApiException(
+      statusCode: 0,
+      message: 'Max retries exceeded',
+      details: {'maxRetries': _maxRetries},
+    );
   }
 
   /// Execute HTTP request based on method
@@ -91,7 +153,7 @@ class ApiService {
       case 'PUT':
         return await http.put(Uri.parse(url), headers: headers, body: body);
       case 'DELETE':
-        return await http.delete(Uri.parse(url), headers: headers);
+        return await http.delete(Uri.parse(url), headers: headers, body: body);
       default:
         throw ArgumentError('Unsupported HTTP method: $method');
     }
