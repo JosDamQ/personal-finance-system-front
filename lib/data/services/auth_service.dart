@@ -12,10 +12,10 @@ class AuthService {
 
   // API endpoints
   static const String _baseUrl = AppConstants.apiBaseUrl;
-  static const String _loginEndpoint = '$_baseUrl/auth/login';
-  static const String _registerEndpoint = '$_baseUrl/auth/register';
-  static const String _refreshEndpoint = '$_baseUrl/auth/refresh';
-  static const String _logoutEndpoint = '$_baseUrl/auth/logout';
+  static const String _loginEndpoint = '$_baseUrl/api/v1/auth/login';
+  static const String _registerEndpoint = '$_baseUrl/api/v1/auth/register';
+  static const String _refreshEndpoint = '$_baseUrl/api/v1/auth/refresh';
+  static const String _logoutEndpoint = '$_baseUrl/api/v1/auth/logout';
 
   /// Login with email and password
   Future<AuthResult> login(String email, String password) async {

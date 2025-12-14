@@ -33,7 +33,7 @@ class CategoryApiService {
       'name': name,
       'color': color,
       'icon': icon,
-      'isDefault': isDefault ?? false,
+      if (isDefault != null) 'isDefault': isDefault,
     });
 
     final response = await _apiService.post('/api/v1/categories', body: body);
@@ -64,7 +64,10 @@ class CategoryApiService {
 
   /// Delete a category
   Future<void> deleteCategory(String categoryId) async {
-    await _apiService.delete('/api/v1/categories/$categoryId');
+    final response = await _apiService.delete('/api/v1/categories/$categoryId');
+    _apiService.parseResponse(
+      response,
+    ); // This will throw ApiException if status is not 2xx
   }
 
   /// Get default categories for new users
@@ -131,7 +134,7 @@ class CategoryApiService {
 
   /// Bulk create default categories for a new user
   Future<List<CategoryModel>> createDefaultCategories() async {
-    final response = await _apiService.post('/api/v1/categories/bulk-defaults');
+    final response = await _apiService.post('/api/v1/categories/initialize');
     return _apiService.parseListResponse(response, CategoryModel.fromJson);
   }
 }

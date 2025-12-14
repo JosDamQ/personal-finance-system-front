@@ -4,9 +4,18 @@ import 'core/theme/app_theme.dart';
 import 'core/navigation/app_router.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/expense_provider.dart';
+import 'presentation/providers/sync_provider.dart';
 import 'data/repositories/local/local_expense_repository.dart';
+import 'data/services/database_service.dart';
+import 'data/services/app_sync_manager.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize database
+  final databaseService = DatabaseService();
+  await databaseService.initialize();
+
   runApp(const PersonalFinanceApp());
 }
 
@@ -20,6 +29,9 @@ class PersonalFinanceApp extends StatelessWidget {
         // Auth Provider
         ChangeNotifierProvider(create: (context) => AuthProvider()),
 
+        // Sync Provider
+        ChangeNotifierProvider(create: (context) => SyncProvider()),
+
         // Expense Provider
         ChangeNotifierProvider(
           create: (context) => ExpenseProvider(LocalExpenseRepository()),
@@ -30,19 +42,20 @@ class PersonalFinanceApp extends StatelessWidget {
         // - CreditCardProvider
         // - CategoryProvider
         // - AlertProvider
-        // - SyncProvider
       ],
-      child: MaterialApp.router(
-        title: 'Finance App',
-        debugShowCheckedModeBanner: false,
+      child: SyncManagerWidget(
+        child: MaterialApp.router(
+          title: 'Finance App',
+          debugShowCheckedModeBanner: false,
 
-        // Theme Configuration
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.system,
+          // Theme Configuration
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: ThemeMode.system,
 
-        // Router Configuration
-        routerConfig: AppRouter.router,
+          // Router Configuration
+          routerConfig: AppRouter.router,
+        ),
       ),
     );
   }

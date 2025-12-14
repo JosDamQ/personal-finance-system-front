@@ -7,7 +7,7 @@ part 'category_model.g.dart';
 @JsonSerializable()
 class CategoryModel extends Equatable {
   final String id;
-  final String userId;
+  final String? userId;
   final String name;
   final String color;
   final String icon;
@@ -19,7 +19,7 @@ class CategoryModel extends Equatable {
 
   const CategoryModel({
     required this.id,
-    required this.userId,
+    this.userId,
     required this.name,
     required this.color,
     required this.icon,
@@ -30,7 +30,8 @@ class CategoryModel extends Equatable {
     this.lastSyncAt,
   });
 
-  factory CategoryModel.fromJson(Map<String, dynamic> json) => _$CategoryModelFromJson(json);
+  factory CategoryModel.fromJson(Map<String, dynamic> json) =>
+      _$CategoryModelFromJson(json);
   Map<String, dynamic> toJson() => _$CategoryModelToJson(this);
 
   CategoryModel copyWith({
@@ -61,15 +62,15 @@ class CategoryModel extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        userId,
-        name,
-        color,
-        icon,
-        isDefault,
-        createdAt,
-        updatedAt,
-        syncStatus,
-        lastSyncAt,
-      ];
+    id,
+    userId,
+    name,
+    color,
+    icon,
+    isDefault,
+    createdAt,
+    updatedAt,
+    syncStatus,
+    lastSyncAt,
+  ];
 }
