@@ -37,6 +37,10 @@ class AppRouter {
 
   static final GoRouter router = GoRouter(
     initialLocation: splash,
+    redirect: (context, state) {
+      // This will be handled by the splash screen
+      return null;
+    },
     routes: [
       // Splash Screen
       GoRoute(
@@ -151,11 +155,7 @@ class AppRouter {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.red,
-            ),
+            const Icon(Icons.error_outline, size: 64, color: Colors.red),
             const SizedBox(height: 16),
             Text(
               'Page not found',

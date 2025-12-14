@@ -9,14 +9,23 @@ class LocalExpenseRepository implements IExpenseRepository {
   @override
   Future<ExpenseModel> create(ExpenseModel expense) async {
     final db = await _databaseHelper.database;
-    
-    final expenseMap = expense.toJson();
-    expenseMap['sync_status'] = expense.syncStatus?.value ?? SyncStatus.pending.value;
-    expenseMap['last_sync_at'] = expense.lastSyncAt?.toIso8601String();
-    expenseMap['created_at'] = expense.createdAt.toIso8601String();
-    expenseMap['updated_at'] = expense.updatedAt.toIso8601String();
-    expenseMap['date'] = expense.date.toIso8601String();
-    
+
+    final expenseMap = <String, dynamic>{
+      'id': expense.id,
+      'user_id': expense.userId,
+      'category_id': expense.categoryId,
+      'credit_card_id': expense.creditCardId,
+      'budget_period_id': expense.budgetPeriodId,
+      'amount': expense.amount,
+      'currency': expense.currency.value,
+      'description': expense.description,
+      'date': expense.date.toIso8601String(),
+      'sync_status': expense.syncStatus?.value ?? SyncStatus.pending.value,
+      'last_sync_at': expense.lastSyncAt?.toIso8601String(),
+      'created_at': expense.createdAt.toIso8601String(),
+      'updated_at': expense.updatedAt.toIso8601String(),
+    };
+
     await db.insert('expenses', expenseMap);
     return expense;
   }
@@ -24,31 +33,31 @@ class LocalExpenseRepository implements IExpenseRepository {
   @override
   Future<ExpenseModel> update(String id, ExpenseModel expense) async {
     final db = await _databaseHelper.database;
-    
-    final expenseMap = expense.toJson();
-    expenseMap['sync_status'] = expense.syncStatus?.value ?? SyncStatus.pending.value;
-    expenseMap['last_sync_at'] = expense.lastSyncAt?.toIso8601String();
-    expenseMap['updated_at'] = DateTime.now().toIso8601String();
-    expenseMap['date'] = expense.date.toIso8601String();
-    
-    await db.update(
-      'expenses',
-      expenseMap,
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-    
+
+    final expenseMap = <String, dynamic>{
+      'id': expense.id,
+      'user_id': expense.userId,
+      'category_id': expense.categoryId,
+      'credit_card_id': expense.creditCardId,
+      'budget_period_id': expense.budgetPeriodId,
+      'amount': expense.amount,
+      'currency': expense.currency.value,
+      'description': expense.description,
+      'date': expense.date.toIso8601String(),
+      'sync_status': expense.syncStatus?.value ?? SyncStatus.pending.value,
+      'last_sync_at': expense.lastSyncAt?.toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+
+    await db.update('expenses', expenseMap, where: 'id = ?', whereArgs: [id]);
+
     return expense.copyWith(updatedAt: DateTime.now());
   }
 
   @override
   Future<void> delete(String id) async {
     final db = await _databaseHelper.database;
-    await db.delete(
-      'expenses',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    await db.delete('expenses', where: 'id = ?', whereArgs: [id]);
   }
 
   @override
@@ -59,7 +68,7 @@ class LocalExpenseRepository implements IExpenseRepository {
       where: 'id = ?',
       whereArgs: [id],
     );
-    
+
     if (results.isEmpty) return null;
     return _mapToExpenseModel(results.first);
   }
@@ -73,7 +82,7 @@ class LocalExpenseRepository implements IExpenseRepository {
       whereArgs: [userId],
       orderBy: 'date DESC',
     );
-    
+
     return results.map(_mapToExpenseModel).toList();
   }
 
@@ -86,7 +95,7 @@ class LocalExpenseRepository implements IExpenseRepository {
       whereArgs: [categoryId],
       orderBy: 'date DESC',
     );
-    
+
     return results.map(_mapToExpenseModel).toList();
   }
 
@@ -99,12 +108,15 @@ class LocalExpenseRepository implements IExpenseRepository {
       whereArgs: [creditCardId],
       orderBy: 'date DESC',
     );
-    
+
     return results.map(_mapToExpenseModel).toList();
   }
 
   @override
-  Future<List<ExpenseModel>> findByDateRange(DateTime startDate, DateTime endDate) async {
+  Future<List<ExpenseModel>> findByDateRange(
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
     final db = await _databaseHelper.database;
     final results = await db.query(
       'expenses',
@@ -112,7 +124,7 @@ class LocalExpenseRepository implements IExpenseRepository {
       whereArgs: [startDate.toIso8601String(), endDate.toIso8601String()],
       orderBy: 'date DESC',
     );
-    
+
     return results.map(_mapToExpenseModel).toList();
   }
 
@@ -125,7 +137,7 @@ class LocalExpenseRepository implements IExpenseRepository {
       whereArgs: [budgetPeriodId],
       orderBy: 'date DESC',
     );
-    
+
     return results.map(_mapToExpenseModel).toList();
   }
 
@@ -138,7 +150,7 @@ class LocalExpenseRepository implements IExpenseRepository {
       whereArgs: [SyncStatus.pending.value],
       orderBy: 'created_at ASC',
     );
-    
+
     return results.map(_mapToExpenseModel).toList();
   }
 
@@ -174,7 +186,7 @@ class LocalExpenseRepository implements IExpenseRepository {
       'SELECT SUM(amount) as total FROM expenses WHERE category_id = ?',
       [categoryId],
     );
-    
+
     return (result.first['total'] as double?) ?? 0.0;
   }
 
@@ -185,37 +197,47 @@ class LocalExpenseRepository implements IExpenseRepository {
       'SELECT SUM(amount) as total FROM expenses WHERE credit_card_id = ?',
       [creditCardId],
     );
-    
+
     return (result.first['total'] as double?) ?? 0.0;
   }
 
   @override
-  Future<double> getTotalByDateRange(DateTime startDate, DateTime endDate) async {
+  Future<double> getTotalByDateRange(
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
     final db = await _databaseHelper.database;
     final result = await db.rawQuery(
       'SELECT SUM(amount) as total FROM expenses WHERE date >= ? AND date <= ?',
       [startDate.toIso8601String(), endDate.toIso8601String()],
     );
-    
+
     return (result.first['total'] as double?) ?? 0.0;
   }
 
   @override
-  Future<Map<String, double>> getTotalsByCategory(String userId, DateTime startDate, DateTime endDate) async {
+  Future<Map<String, double>> getTotalsByCategory(
+    String userId,
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
     final db = await _databaseHelper.database;
-    final results = await db.rawQuery('''
+    final results = await db.rawQuery(
+      '''
       SELECT c.name, SUM(e.amount) as total 
       FROM expenses e 
       JOIN categories c ON e.category_id = c.id 
       WHERE e.user_id = ? AND e.date >= ? AND e.date <= ?
       GROUP BY c.id, c.name
-    ''', [userId, startDate.toIso8601String(), endDate.toIso8601String()]);
-    
+    ''',
+      [userId, startDate.toIso8601String(), endDate.toIso8601String()],
+    );
+
     final totals = <String, double>{};
     for (final result in results) {
       totals[result['name'] as String] = (result['total'] as double?) ?? 0.0;
     }
-    
+
     return totals;
   }
 
@@ -232,10 +254,10 @@ class LocalExpenseRepository implements IExpenseRepository {
       date: DateTime.parse(map['date'] as String),
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
-      syncStatus: map['sync_status'] != null 
+      syncStatus: map['sync_status'] != null
           ? SyncStatus.values.firstWhere((e) => e.value == map['sync_status'])
           : null,
-      lastSyncAt: map['last_sync_at'] != null 
+      lastSyncAt: map['last_sync_at'] != null
           ? DateTime.parse(map['last_sync_at'] as String)
           : null,
     );

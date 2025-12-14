@@ -1,8 +1,11 @@
 import 'package:flutter/foundation.dart';
 import '../../core/enums/app_enums.dart';
 import '../../data/models/user_model.dart';
+import '../../data/services/auth_service.dart';
 
 class AuthProvider extends ChangeNotifier {
+  final AuthService _authService = AuthService();
+
   UserModel? _currentUser;
   LoadingState _loadingState = LoadingState.initial;
   String? _errorMessage;
@@ -19,23 +22,16 @@ class AuthProvider extends ChangeNotifier {
   Future<void> login(String email, String password) async {
     try {
       _setLoadingState(LoadingState.loading);
-      
-      // TODO: Implement actual login logic with API call
-      await Future.delayed(const Duration(seconds: 2)); // Simulate API call
-      
-      // Mock user for now
-      _currentUser = UserModel(
-        id: 'user-123',
-        email: email,
-        name: 'Test User',
-        defaultCurrency: 'GTQ',
-        theme: 'light',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-      
-      _isAuthenticated = true;
-      _setLoadingState(LoadingState.loaded);
+
+      final result = await _authService.login(email, password);
+
+      if (result.isSuccess && result.user != null) {
+        _currentUser = result.user;
+        _isAuthenticated = true;
+        _setLoadingState(LoadingState.loaded);
+      } else {
+        _setError(result.errorMessage ?? 'Login failed');
+      }
     } catch (e) {
       _setError('Login failed: ${e.toString()}');
     }
@@ -44,23 +40,16 @@ class AuthProvider extends ChangeNotifier {
   Future<void> register(String email, String password, String name) async {
     try {
       _setLoadingState(LoadingState.loading);
-      
-      // TODO: Implement actual registration logic with API call
-      await Future.delayed(const Duration(seconds: 2)); // Simulate API call
-      
-      // Mock user for now
-      _currentUser = UserModel(
-        id: 'user-123',
-        email: email,
-        name: name,
-        defaultCurrency: 'GTQ',
-        theme: 'light',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-      
-      _isAuthenticated = true;
-      _setLoadingState(LoadingState.loaded);
+
+      final result = await _authService.register(email, password, name);
+
+      if (result.isSuccess && result.user != null) {
+        _currentUser = result.user;
+        _isAuthenticated = true;
+        _setLoadingState(LoadingState.loaded);
+      } else {
+        _setError(result.errorMessage ?? 'Registration failed');
+      }
     } catch (e) {
       _setError('Registration failed: ${e.toString()}');
     }
@@ -69,10 +58,9 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     try {
       _setLoadingState(LoadingState.loading);
-      
-      // TODO: Implement actual logout logic (clear tokens, etc.)
-      await Future.delayed(const Duration(seconds: 1)); // Simulate API call
-      
+
+      await _authService.logout();
+
       _currentUser = null;
       _isAuthenticated = false;
       _setLoadingState(LoadingState.initial);
@@ -84,12 +72,21 @@ class AuthProvider extends ChangeNotifier {
   Future<void> checkAuthStatus() async {
     try {
       _setLoadingState(LoadingState.loading);
-      
-      // TODO: Check if user has valid tokens stored locally
-      await Future.delayed(const Duration(seconds: 1)); // Simulate check
-      
-      // For now, assume not authenticated
-      _isAuthenticated = false;
+
+      final isAuth = await _authService.isAuthenticated();
+
+      if (isAuth) {
+        final user = await _authService.getStoredUser();
+        if (user != null) {
+          _currentUser = user;
+          _isAuthenticated = true;
+        } else {
+          _isAuthenticated = false;
+        }
+      } else {
+        _isAuthenticated = false;
+      }
+
       _setLoadingState(LoadingState.loaded);
     } catch (e) {
       _setError('Auth check failed: ${e.toString()}');
@@ -99,10 +96,10 @@ class AuthProvider extends ChangeNotifier {
   Future<void> updateProfile(UserModel updatedUser) async {
     try {
       _setLoadingState(LoadingState.loading);
-      
+
       // TODO: Implement actual profile update logic with API call
       await Future.delayed(const Duration(seconds: 1)); // Simulate API call
-      
+
       _currentUser = updatedUser;
       _setLoadingState(LoadingState.loaded);
     } catch (e) {
@@ -130,4 +127,7 @@ class AuthProvider extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  // Get AuthService instance for other services to use
+  AuthService get authService => _authService;
 }

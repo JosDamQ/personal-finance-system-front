@@ -29,7 +29,27 @@ class UserModel extends Equatable {
     required this.updatedAt,
   });
 
-  factory UserModel.fromJson(Map<String, dynamic> json) => _$UserModelFromJson(json);
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    // Handle backend auth response format (minimal user data)
+    if (json.containsKey('id') &&
+        json.containsKey('email') &&
+        !json.containsKey('defaultCurrency')) {
+      return UserModel(
+        id: json['id'] as String,
+        email: json['email'] as String,
+        name: json['name'] as String?,
+        phone: null,
+        oauthProvider: null,
+        oauthId: null,
+        defaultCurrency: 'GTQ', // Default value
+        theme: 'light', // Default value
+        createdAt: DateTime.now(), // Default value
+        updatedAt: DateTime.now(), // Default value
+      );
+    }
+    // Handle full user data format
+    return _$UserModelFromJson(json);
+  }
   Map<String, dynamic> toJson() => _$UserModelToJson(this);
 
   UserModel copyWith({
@@ -60,15 +80,15 @@ class UserModel extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        email,
-        name,
-        phone,
-        oauthProvider,
-        oauthId,
-        defaultCurrency,
-        theme,
-        createdAt,
-        updatedAt,
-      ];
+    id,
+    email,
+    name,
+    phone,
+    oauthProvider,
+    oauthId,
+    defaultCurrency,
+    theme,
+    createdAt,
+    updatedAt,
+  ];
 }
